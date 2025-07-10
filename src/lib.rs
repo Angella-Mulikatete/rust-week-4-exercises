@@ -1,15 +1,11 @@
-
-
 // Custom errors for Bitcoin operations
 #[derive(Debug)]
 pub enum BitcoinError {
-   InvalidTransaction,
+    InvalidTransaction,
     InsufficientFunds,
     InvalidAddress,
     ParseError(String),
 }
-
-
 
 impl std::fmt::Display for BitcoinError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -35,9 +31,7 @@ impl<T> Point<T> {
         Point { x, y }
     }
 }
- impl std::error::Error for BitcoinError {}
-     
-
+impl std::error::Error for BitcoinError {}
 
 // Custom serialization for Bitcoin transaction
 pub trait BitcoinSerialize {
@@ -147,22 +141,23 @@ pub fn parse_cli_args(args: &[String]) -> Result<CliCommand, BitcoinError> {
     if args.is_empty() {
         return Err(BitcoinError::ParseError("No command provided".to_string()));
     }
-    match args[0].as_str(){
+    match args[0].as_str() {
         "send" => {
             if args.len() < 3 {
-                return Err(BitcoinError::ParseError("send requires amount and address".to_string()));
+                return Err(BitcoinError::ParseError(
+                    "send requires amount and address".to_string(),
+                ));
             }
-            let amount = args[1].parse::<u64>().map_err(|_| {
-                BitcoinError::ParseError("Invalid amount for send".to_string())
-            })?;
+            let amount = args[1]
+                .parse::<u64>()
+                .map_err(|_| BitcoinError::ParseError("Invalid amount for send".to_string()))?;
             let address = args[2].clone();
             Ok(CliCommand::Send { amount, address })
-        },
+        }
         "balance" => Ok(CliCommand::Balance),
         _ => Err(BitcoinError::ParseError("Unknown command".to_string())),
-        }
     }
-
+}
 
 // Decoding legacy transaction
 impl TryFrom<&[u8]> for LegacyTransaction {
@@ -174,9 +169,21 @@ impl TryFrom<&[u8]> for LegacyTransaction {
         if data.len() < 10 {
             return Err(BitcoinError::InvalidTransaction);
         }
-        let version = i32::from_le_bytes(data[0..4].try_into().map_err(|_| BitcoinError::InvalidTransaction)?);
-        let inputs_count = u32::from_le_bytes(data[4..8].try_into().map_err(|_| BitcoinError::InvalidTransaction)?);
-        let lock_time = u32::from_le_bytes(data[8..12].try_into().map_err(|_| BitcoinError::InvalidTransaction)?);
+        let version = i32::from_le_bytes(
+            data[0..4]
+                .try_into()
+                .map_err(|_| BitcoinError::InvalidTransaction)?,
+        );
+        let inputs_count = u32::from_le_bytes(
+            data[4..8]
+                .try_into()
+                .map_err(|_| BitcoinError::InvalidTransaction)?,
+        );
+        let lock_time = u32::from_le_bytes(
+            data[8..12]
+                .try_into()
+                .map_err(|_| BitcoinError::InvalidTransaction)?,
+        );
         Ok(LegacyTransaction {
             version,
             inputs: Vec::with_capacity(inputs_count as usize),
@@ -190,9 +197,9 @@ impl TryFrom<&[u8]> for LegacyTransaction {
 impl BitcoinSerialize for LegacyTransaction {
     fn serialize(&self) -> Vec<u8> {
         // TODO: Serialize only version and lock_time (simplified)
-         let mut result = Vec::with_capacity(8);
+        let mut result = Vec::with_capacity(8);
         result.extend_from_slice(&self.version.to_le_bytes());
         result.extend_from_slice(&self.lock_time.to_le_bytes());
         result
     }
-}   
+}
